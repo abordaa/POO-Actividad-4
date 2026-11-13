@@ -1,0 +1,224 @@
+import html
+import ipywidgets as widgets
+from IPython.display import display
+
+try:  
+    from google.colab import output
+    output.enable_custom_widget_manager()
+except ImportError:
+    pass
+
+
+def encabezado(titulo, subtitulo):
+    return widgets.HTML(
+        "<div style='background:#1a73e8;color:white;padding:10px 14px'>"
+        f"<b style='font-size:16px'>{html.escape(titulo)}</b><br>"
+        f"<span style='font-size:12px'>{html.escape(subtitulo)}</span></div>")
+
+
+def mensajes_html(mensajes):
+    """Lista de (tipo, texto) -> HTML. tipo: 'ok' verde, 'error' rojo, 'info' azul."""
+    colores = {"ok": ("#e6f4ea", "#137333"), "error": ("#fce8e6", "#c5221f"),
+               "info": ("#e8f0fe", "#1967d2")}
+    filas = ""
+    for tipo, texto in mensajes:
+        fondo, letra = colores[tipo]
+        filas += (f"<div style='background:{fondo};color:{letra};padding:4px 8px;margin:2px 0;"
+                  f"font-family:monospace;white-space:pre-wrap'>{html.escape(str(texto))}</div>")
+    return filas
+
+
+def ventana(*hijos):
+    return widgets.VBox(list(hijos), layout=widgets.Layout(
+        border="1px solid #9aa0a6", padding="0 0 10px 0", width="620px"))
+
+
+def fila(*hijos):
+    return widgets.HBox(list(hijos), layout=widgets.Layout(padding="4px 12px"))
+
+MODO_AUTOMATICO = True
+import builtins
+_datos_teclado = []
+
+
+def datos_teclado(valores):
+    _datos_teclado[:] = [str(v) for v in valores]
+
+
+def input(mensaje=""):
+    if not MODO_AUTOMATICO:
+        return builtins.input(mensaje)
+    valor = _datos_teclado.pop(0) if _datos_teclado else ""
+    print(mensaje + valor)
+    return valor
+
+class Programador:
+    """Integrante de un equipo de la maratón de programación."""
+
+    def __init__(self, nombre: str, apellidos: str):
+        self.__nombre = nombre
+        self.__apellidos = apellidos
+
+    @property
+    def nombre(self):
+        return self.__nombre
+
+    @property
+    def apellidos(self):
+        return self.__apellidos
+
+    def __str__(self):
+        return f"{self.__nombre} {self.__apellidos}"
+
+
+class EquipoMaratonProgramacion:
+    """Equipo que participa en una maratón de programación.
+    Debe tener mínimo 2 y máximo 3 programadores."""
+
+    MINIMO = 2
+    MAXIMO = 3
+
+    def __init__(self, nombre_equipo: str, universidad: str, lenguaje_programacion: str):
+        self.__nombre_equipo = nombre_equipo
+        self.__universidad = universidad
+        self.__lenguaje_programacion = lenguaje_programacion
+        self.__programadores = []          
+        self.__tamano_equipo = 0           
+
+    def esta_lleno(self) -> bool:
+        """Determina si el equipo ya tiene el máximo de programadores (3)."""
+        return self.__tamano_equipo == EquipoMaratonProgramacion.MAXIMO
+
+    def esta_completo(self) -> bool:
+        """Determina si el equipo tiene el mínimo para competir (2 o más)."""
+        return self.__tamano_equipo >= EquipoMaratonProgramacion.MINIMO
+
+    def anadir(self, programador: Programador):
+        """Añade un programador. Si el equipo está lleno lanza una excepción."""
+        if self.esta_lleno():
+            raise Exception("El equipo está completo. No se pudo agregar programador.")
+        self.__programadores.append(programador)
+        self.__tamano_equipo += 1
+
+    @staticmethod
+    def validar_campo(campo: str):
+        """Valida que el campo sea solo texto (sin dígitos) y que tenga
+        menos de 20 caracteres. Si no cumple, lanza una excepción."""
+        if campo.strip() == "":
+            raise Exception("El campo no puede estar vacío.")
+        for caracter in campo:
+            if caracter.isdigit():
+                raise Exception("El nombre no puede tener dígitos.")
+        if len(campo) >= 20:
+            raise Exception("La longitud debe ser menor a 20 caracteres.")
+
+    @property
+    def programadores(self):
+        return list(self.__programadores)
+
+    def __str__(self):
+        integrantes = "\n".join(f"  {i}. {p}" for i, p in enumerate(self.__programadores, 1))
+        return (f"Equipo: {self.__nombre_equipo} | Universidad: {self.__universidad} | "
+                f"Lenguaje: {self.__lenguaje_programacion}\n"
+                f"Integrantes ({self.__tamano_equipo}/{EquipoMaratonProgramacion.MAXIMO}):\n"
+                f"{integrantes}")
+
+    @staticmethod
+    def main():
+        """Crea un equipo con datos ingresados por teclado y registra tres
+        integrantes validando sus nombres y apellidos."""
+        nombre = input("Nombre del equipo = ")
+        universidad = input("Universidad = ")
+        lenguaje = input("Lenguaje de programación = ")
+        equipo = EquipoMaratonProgramacion(nombre, universidad, lenguaje)
+        print("Datos de los integrantes del equipo")
+        while not equipo.esta_lleno():
+            try:
+                nombre_p = input("Nombre del integrante = ")
+                EquipoMaratonProgramacion.validar_campo(nombre_p)
+                apellidos_p = input("Apellidos del integrante = ")
+                EquipoMaratonProgramacion.validar_campo(apellidos_p)
+                equipo.anadir(Programador(nombre_p, apellidos_p))
+            except Exception as ex:
+                print(f"Excepción: {ex} Ingrese de nuevo el integrante.")
+        print(equipo)
+        return equipo
+
+datos_teclado(["EquipoUNAL", "Nacional", "Java", "Pedro", "Pérez", "Pablo3",
+               "Pablo", "Gómez", "María", "López"])   
+equipo = EquipoMaratonProgramacion.main()
+
+
+try:
+    equipo.anadir(Programador("Carlos", "Ruiz"))
+except Exception as ex:
+    print("Excepción:", ex)
+
+try:
+    EquipoMaratonProgramacion.validar_campo("Maximiliano Alejandro")
+except Exception as ex:
+    print("Excepción:", ex)
+
+print("¿Equipo lleno?", equipo.esta_lleno(), "| ¿Puede competir?", equipo.esta_completo())
+
+class InterfazEquipoMaraton:
+    """Formulario para crear un equipo y agregar programadores validando los campos."""
+
+    def __init__(self):
+        self.equipo = None
+        self.txt_equipo = widgets.Text(description="Equipo:", placeholder="Ej: EquipoUNAL")
+        self.txt_universidad = widgets.Text(description="Universidad:", placeholder="Ej: Nacional")
+        self.txt_lenguaje = widgets.Text(value="Python", description="Lenguaje:")
+        self.btn_crear = widgets.Button(description="Crear equipo", button_style="primary",
+                                        icon="users")
+        self.txt_nombre = widgets.Text(description="Nombre:")
+        self.txt_apellidos = widgets.Text(description="Apellidos:")
+        self.btn_anadir = widgets.Button(description="Añadir programador",
+                                         button_style="success", icon="plus",
+                                         layout=widgets.Layout(width="200px"))
+        self.lbl_estado = widgets.HTML()
+        self.lbl_salida = widgets.HTML()
+        self.btn_crear.on_click(self.crear_equipo)
+        self.btn_anadir.on_click(self.anadir_programador)
+
+    def crear_equipo(self, boton=None):
+        self.equipo = EquipoMaratonProgramacion(self.txt_equipo.value,
+                                                self.txt_universidad.value,
+                                                self.txt_lenguaje.value)
+        self.lbl_salida.value = mensajes_html([("ok", "Equipo creado. Agregue de 2 a 3 programadores.")])
+        self.actualizar_estado()
+
+    def anadir_programador(self, boton=None):
+        if self.equipo is None:
+            self.lbl_salida.value = mensajes_html([("error", "Primero cree el equipo.")])
+            return
+        try:
+            EquipoMaratonProgramacion.validar_campo(self.txt_nombre.value)
+            EquipoMaratonProgramacion.validar_campo(self.txt_apellidos.value)
+            self.equipo.anadir(Programador(self.txt_nombre.value, self.txt_apellidos.value))
+            mensaje = ("ok", f"Programador agregado: {self.txt_nombre.value} {self.txt_apellidos.value}")
+            self.txt_nombre.value = ""
+            self.txt_apellidos.value = ""
+        except Exception as ex:
+            mensaje = ("error", f"Excepción: {ex}")
+        self.lbl_salida.value = mensajes_html([mensaje])
+        self.actualizar_estado()
+
+    def actualizar_estado(self):
+        estado = "Puede competir" if self.equipo.esta_completo() else "Faltan integrantes"
+        if self.equipo.esta_lleno():
+            estado = "Equipo lleno"
+        self.lbl_estado.value = mensajes_html([("info", f"{self.equipo}\nEstado: {estado}")])
+
+    def mostrar(self):
+        display(ventana(
+            encabezado("Ejercicio 6.7 - Maratón de programación", "Validación de campos con excepciones"),
+            fila(widgets.HTML("<b>Datos del equipo</b>")),
+            fila(self.txt_equipo, self.txt_universidad), fila(self.txt_lenguaje, self.btn_crear),
+            fila(widgets.HTML("<b>Datos del programador</b>")),
+            fila(self.txt_nombre, self.txt_apellidos), fila(self.btn_anadir),
+            fila(self.lbl_salida), fila(self.lbl_estado)))
+
+
+gui_67 = InterfazEquipoMaraton()
+gui_67.mostrar()
