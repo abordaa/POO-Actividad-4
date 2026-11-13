@@ -1,0 +1,145 @@
+import html
+import ipywidgets as widgets
+from IPython.display import display
+
+try: 
+    from google.colab import output
+    output.enable_custom_widget_manager()
+except ImportError:
+    pass
+
+
+def encabezado(titulo, subtitulo):
+    return widgets.HTML(
+        "<div style='background:#1a73e8;color:white;padding:10px 14px'>"
+        f"<b style='font-size:16px'>{html.escape(titulo)}</b><br>"
+        f"<span style='font-size:12px'>{html.escape(subtitulo)}</span></div>")
+
+
+def mensajes_html(mensajes):
+    """Lista de (tipo, texto) -> HTML. tipo: 'ok' verde, 'error' rojo, 'info' azul."""
+    colores = {"ok": ("#e6f4ea", "#137333"), "error": ("#fce8e6", "#c5221f"),
+               "info": ("#e8f0fe", "#1967d2")}
+    filas = ""
+    for tipo, texto in mensajes:
+        fondo, letra = colores[tipo]
+        filas += (f"<div style='background:{fondo};color:{letra};padding:4px 8px;margin:2px 0;"
+                  f"font-family:monospace;white-space:pre-wrap'>{html.escape(str(texto))}</div>")
+    return filas
+
+
+def ventana(*hijos):
+    return widgets.VBox(list(hijos), layout=widgets.Layout(
+        border="1px solid #9aa0a6", padding="0 0 10px 0", width="620px"))
+
+
+def fila(*hijos):
+    return widgets.HBox(list(hijos), layout=widgets.Layout(padding="4px 12px"))
+
+MODO_AUTOMATICO = True
+import builtins
+_datos_teclado = []
+
+
+def datos_teclado(valores):
+    _datos_teclado[:] = [str(v) for v in valores]
+
+
+def input(mensaje=""):
+    if not MODO_AUTOMATICO:
+        return builtins.input(mensaje)
+    valor = _datos_teclado.pop(0) if _datos_teclado else ""
+    print(mensaje + valor)
+    return valor
+
+class IllegalArgumentException(ValueError):
+    """Equivalente en Python de IllegalArgumentException de Java:
+    indica que a un método se le pasó un argumento ilegal o inapropiado."""
+
+
+class Vendedor:
+    """Modela un vendedor que tiene como atributos un nombre,
+    unos apellidos y una edad."""
+
+    def __init__(self, nombre: str, apellidos: str):
+        self.__nombre = nombre        
+        self.__apellidos = apellidos  
+        self.__edad = 0               
+
+    def verificar_edad(self, edad: int):
+        """Verifica que la edad sea apropiada; si no lo es, lanza (raise)
+        una IllegalArgumentException con el mensaje correspondiente."""
+        if edad < 0 or edad > 120:
+            raise IllegalArgumentException("La edad no puede ser negativa ni mayor a 120.")
+        if edad < 18:
+            raise IllegalArgumentException("El vendedor debe ser mayor de 18 años.")
+        self.__edad = edad
+
+    def imprimir(self):
+        """Muestra en pantalla los datos del vendedor."""
+        print(self)
+
+    def __str__(self):
+        return (f"Nombre del vendedor = {self.__nombre}\n"
+                f"Apellidos del vendedor = {self.__apellidos}\n"
+                f"Edad del vendedor = {self.__edad}")
+
+    @staticmethod
+    def main():
+        """Solicita por teclado el nombre, apellidos y edad del vendedor y
+        verifica la edad. Si no es correcta se informa la excepción."""
+        n = input("Nombre del vendedor = ")
+        a = input("Apellidos del vendedor = ")
+        vendedor = Vendedor(n, a)
+        try:
+            e = int(input("Edad del vendedor = "))
+            vendedor.verificar_edad(e)
+            vendedor.imprimir()
+        except IllegalArgumentException as ex:
+            print(f"IllegalArgumentException: {ex}")
+        except ValueError:
+            print("La edad debe ser un número entero.")
+
+datos_teclado(["Pedro", "Pérez", "17"])   
+Vendedor.main()
+
+for nombre, apellidos, edad in [("Ana", "Gómez", 30), ("Luis", "Mora", -5), ("Rosa", "Díaz", 150)]:
+    vendedor = Vendedor(nombre, apellidos)
+    try:
+        vendedor.verificar_edad(edad)
+        vendedor.imprimir()
+    except IllegalArgumentException as ex:
+        print(f"{nombre} ({edad} años) -> IllegalArgumentException: {ex}")
+    print("-" * 50)
+
+class InterfazVendedor:
+    """Formulario para registrar un vendedor y verificar su edad."""
+
+    def __init__(self):
+        self.txt_nombre = widgets.Text(description="Nombre:", placeholder="Ej: Pedro")
+        self.txt_apellidos = widgets.Text(description="Apellidos:", placeholder="Ej: Pérez")
+        self.txt_edad = widgets.IntText(value=18, description="Edad:")
+        self.btn_registrar = widgets.Button(description="Registrar vendedor",
+                                            button_style="primary", icon="user-plus",
+                                            layout=widgets.Layout(width="200px"))
+        self.lbl_salida = widgets.HTML()
+        self.btn_registrar.on_click(self.registrar)
+
+    def registrar(self, boton=None):
+        vendedor = Vendedor(self.txt_nombre.value, self.txt_apellidos.value)
+        try:
+            vendedor.verificar_edad(self.txt_edad.value)
+            mensajes = [("ok", "Vendedor registrado correctamente"), ("info", str(vendedor))]
+        except IllegalArgumentException as ex:
+            mensajes = [("error", f"IllegalArgumentException: {ex}")]
+        self.lbl_salida.value = mensajes_html(mensajes)
+
+    def mostrar(self):
+        display(ventana(
+            encabezado("Ejercicio 6.5 - Registro de vendedores", "Lanzamiento de excepciones (raise)"),
+            fila(self.txt_nombre), fila(self.txt_apellidos), fila(self.txt_edad),
+            fila(self.btn_registrar), fila(self.lbl_salida)))
+
+
+gui_65 = InterfazVendedor()
+gui_65.mostrar()
