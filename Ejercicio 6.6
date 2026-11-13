@@ -1,0 +1,142 @@
+import html
+import ipywidgets as widgets
+from IPython.display import display
+
+try:  
+    from google.colab import output
+    output.enable_custom_widget_manager()
+except ImportError:
+    pass
+
+
+def encabezado(titulo, subtitulo):
+    return widgets.HTML(
+        "<div style='background:#1a73e8;color:white;padding:10px 14px'>"
+        f"<b style='font-size:16px'>{html.escape(titulo)}</b><br>"
+        f"<span style='font-size:12px'>{html.escape(subtitulo)}</span></div>")
+
+
+def mensajes_html(mensajes):
+    """Lista de (tipo, texto) -> HTML. tipo: 'ok' verde, 'error' rojo, 'info' azul."""
+    colores = {"ok": ("#e6f4ea", "#137333"), "error": ("#fce8e6", "#c5221f"),
+               "info": ("#e8f0fe", "#1967d2")}
+    filas = ""
+    for tipo, texto in mensajes:
+        fondo, letra = colores[tipo]
+        filas += (f"<div style='background:{fondo};color:{letra};padding:4px 8px;margin:2px 0;"
+                  f"font-family:monospace;white-space:pre-wrap'>{html.escape(str(texto))}</div>")
+    return filas
+
+
+def ventana(*hijos):
+    return widgets.VBox(list(hijos), layout=widgets.Layout(
+        border="1px solid #9aa0a6", padding="0 0 10px 0", width="620px"))
+
+
+def fila(*hijos):
+    return widgets.HBox(list(hijos), layout=widgets.Layout(padding="4px 12px"))
+
+MODO_AUTOMATICO = True
+import builtins
+_datos_teclado = []
+
+
+def datos_teclado(valores):
+    _datos_teclado[:] = [str(v) for v in valores]
+
+
+def input(mensaje=""):
+    if not MODO_AUTOMATICO:
+        return builtins.input(mensaje)
+    valor = _datos_teclado.pop(0) if _datos_teclado else ""
+    print(mensaje + valor)
+    return valor
+
+import math
+
+
+class CalculosNumericos:
+    """Permite calcular el logaritmo neperiano y la raíz cuadrada de un valor.
+    Cada método tiene varios bloques except, del más específico al más general."""
+
+    @staticmethod
+    def calcular_logaritmo_neperiano(valor):
+        """Calcula ln(valor). Lanza ArithmeticError si el valor no es positivo.
+        Si el valor no es numérico se produce ValueError (≈ InputMismatchException)."""
+        try:
+            numero = float(valor)                    
+            if numero <= 0:
+                raise ArithmeticError("El valor debe ser un número positivo")
+            resultado = math.log(numero)
+            return f"Logaritmo neperiano = {resultado}"
+        except ArithmeticError:
+            return "El valor debe ser un número positivo para calcular el logaritmo"
+        except (ValueError, TypeError):               
+            return "El valor debe ser numérico para calcular el logaritmo"
+
+    @staticmethod
+    def calcular_raiz_cuadrada(valor):
+        """Calcula la raíz cuadrada. Lanza ArithmeticError si el valor es negativo."""
+        try:
+            numero = float(valor)
+            if numero < 0:
+                raise ArithmeticError("El valor debe ser un número positivo")
+            resultado = math.sqrt(numero)
+            return f"Raíz cuadrada = {resultado}"
+        except ArithmeticError:
+            return "El valor debe ser un número positivo para calcular la raíz cuadrada"
+        except (ValueError, TypeError):
+            return "El valor debe ser numérico para calcular la raíz cuadrada"
+
+    @staticmethod
+    def main():
+        """Solicita un valor por teclado y calcula su logaritmo y su raíz cuadrada."""
+        valor = input("Valor numérico = ")
+        print(CalculosNumericos.calcular_logaritmo_neperiano(valor))
+        print(CalculosNumericos.calcular_raiz_cuadrada(valor))
+
+datos_teclado(["25"])                     
+CalculosNumericos.main()
+
+for valor in ["25", "-4", "0", "abc"]:
+    print(f"Valor = {valor!r}")
+    print("  ", CalculosNumericos.calcular_logaritmo_neperiano(valor))
+    print("  ", CalculosNumericos.calcular_raiz_cuadrada(valor))
+
+class InterfazCalculosNumericos:
+    """Calculadora que muestra el resultado o el mensaje de la excepción capturada."""
+
+    def __init__(self):
+        self.txt_valor = widgets.Text(value="25", description="Valor:",
+                                      placeholder="Escriba un número")
+        self.btn_log = widgets.Button(description="Logaritmo ln(x)", button_style="primary")
+        self.btn_raiz = widgets.Button(description="Raíz cuadrada √x", button_style="primary")
+        self.btn_ambos = widgets.Button(description="Calcular ambos", button_style="success")
+        self.lbl_salida = widgets.HTML()
+        self.btn_log.on_click(lambda b: self.calcular(log=True, raiz=False))
+        self.btn_raiz.on_click(lambda b: self.calcular(log=False, raiz=True))
+        self.btn_ambos.on_click(lambda b: self.calcular(log=True, raiz=True))
+
+    @staticmethod
+    def _tipo(texto):
+        return "ok" if "=" in texto else "error"
+
+    def calcular(self, log=True, raiz=True):
+        mensajes = [("info", f"Valor ingresado: {self.txt_valor.value!r}")]
+        if log:
+            r = CalculosNumericos.calcular_logaritmo_neperiano(self.txt_valor.value)
+            mensajes.append((self._tipo(r), r))
+        if raiz:
+            r = CalculosNumericos.calcular_raiz_cuadrada(self.txt_valor.value)
+            mensajes.append((self._tipo(r), r))
+        self.lbl_salida.value = mensajes_html(mensajes)
+
+    def mostrar(self):
+        display(ventana(
+            encabezado("Ejercicio 6.6 - Cálculos numéricos", "Manejo de múltiples excepciones"),
+            fila(self.txt_valor), fila(self.btn_log, self.btn_raiz, self.btn_ambos),
+            fila(self.lbl_salida)))
+
+
+gui_66 = InterfazCalculosNumericos()
+gui_66.mostrar()
