@@ -1,0 +1,123 @@
+import html
+import ipywidgets as widgets
+from IPython.display import display
+
+try:  
+    from google.colab import output
+    output.enable_custom_widget_manager()
+except ImportError:
+    pass
+
+def encabezado(titulo, subtitulo):
+    return widgets.HTML(
+        "<div style='background:#1a73e8;color:white;padding:10px 14px'>"
+        f"<b style='font-size:16px'>{html.escape(titulo)}</b><br>"
+        f"<span style='font-size:12px'>{html.escape(subtitulo)}</span></div>")
+
+def mensajes_html(mensajes):
+    """Lista de (tipo, texto) -> HTML. tipo: 'ok' verde, 'error' rojo, 'info' azul."""
+    colores = {"ok": ("#e6f4ea", "#137333"), "error": ("#fce8e6", "#c5221f"),
+               "info": ("#e8f0fe", "#1967d2")}
+    filas = ""
+    for tipo, texto in mensajes:
+        fondo, letra = colores[tipo]
+        filas += (f"<div style='background:{fondo};color:{letra};padding:4px 8px;margin:2px 0;"
+                  f"font-family:monospace;white-space:pre-wrap'>{html.escape(str(texto))}</div>")
+    return filas
+
+def ventana(*hijos):
+    return widgets.VBox(list(hijos), layout=widgets.Layout(
+        border="1px solid #9aa0a6", padding="0 0 10px 0", width="620px"))
+
+def fila(*hijos):
+    return widgets.HBox(list(hijos), layout=widgets.Layout(padding="4px 12px"))
+
+class PruebaExcepciones:
+    """Lanza diferentes excepciones en situaciones específicas del programa.
+    Los mensajes que se generan ayudan a identificar la porción de código
+    que se ejecutó o no."""
+
+    @staticmethod
+    def primer_bloque(dividendo=10000, divisor=0):
+        """Primer bloque try: una división que puede lanzar ZeroDivisionError
+        (equivalente a ArithmeticException en Java)."""
+        mensajes = []
+        try:
+            mensajes.append("Ingresando al primer try")
+            cociente = dividendo / divisor            
+            mensajes.append("Después de la división")  
+            mensajes.append(f"Cociente = {cociente}")
+        except ZeroDivisionError:                      
+            mensajes.append("División por cero")
+        finally:
+            mensajes.append("Ingresando al primer finally")
+        return mensajes
+
+    @staticmethod
+    def segundo_bloque(objeto=None):
+        """Segundo bloque try: se invoca un método sobre una referencia nula
+        (None), lo que lanza AttributeError (equivalente a NullPointerException)."""
+        mensajes = []
+        try:
+            mensajes.append("Ingresando al segundo try")
+            texto = objeto.upper()                     
+            mensajes.append(f"Imprimiendo objeto: {texto}")  
+        except ZeroDivisionError:                      
+            mensajes.append("División por cero")
+        except Exception:                              
+            mensajes.append("Ocurrió una excepción")
+        finally:
+            mensajes.append("Ingresando al segundo finally")
+        return mensajes
+
+    @staticmethod
+    def main():
+        """Ejecuta los dos bloques try y muestra en pantalla lo que se imprime."""
+        for mensaje in PruebaExcepciones.primer_bloque():
+            print(mensaje)
+        for mensaje in PruebaExcepciones.segundo_bloque():
+            print(mensaje)
+
+PruebaExcepciones.main()
+
+class InterfazPruebaExcepciones:
+    """Ventana que permite cambiar los datos de los bloques try y ver
+    qué instrucciones se ejecutan."""
+
+    def __init__(self):
+        self.txt_dividendo = widgets.IntText(value=10000, description="Dividendo:")
+        self.txt_divisor = widgets.IntText(value=0, description="Divisor:")
+        self.cmb_objeto = widgets.Dropdown(
+            options=[("None (referencia nula)", "nulo"), ("'Hola mundo' (texto)", "Hola mundo")],
+            value="nulo", description="Objeto:", layout=widgets.Layout(width="330px"))
+        self.btn_ejecutar = widgets.Button(description="Ejecutar main", button_style="primary",
+                                           icon="play")
+        self.lbl_salida = widgets.HTML()
+        self.btn_ejecutar.on_click(self.ejecutar)
+
+    def ejecutar(self, boton=None):
+        mensajes = []
+        bloque1 = PruebaExcepciones.primer_bloque(self.txt_dividendo.value, self.txt_divisor.value)
+        objeto = None if self.cmb_objeto.value == "nulo" else self.cmb_objeto.value
+        bloque2 = PruebaExcepciones.segundo_bloque(objeto)
+        for m in bloque1 + bloque2:
+            if m in ("División por cero", "Ocurrió una excepción"):
+                mensajes.append(("error", m))
+            elif "finally" in m:
+                mensajes.append(("info", m))
+            else:
+                mensajes.append(("ok", m))
+        self.lbl_salida.value = "<b>Salida en pantalla:</b>" + mensajes_html(mensajes)
+
+    def mostrar(self):
+        display(ventana(
+            encabezado("Ejercicio 6.4 - Excepciones", "Bloques try / except / finally"),
+            fila(widgets.HTML("<b>Primer try (división)</b>")),
+            fila(self.txt_dividendo, self.txt_divisor),
+            fila(widgets.HTML("<b>Segundo try (método sobre un objeto)</b>")),
+            fila(self.cmb_objeto),
+            fila(self.btn_ejecutar),
+            fila(self.lbl_salida)))
+
+gui_64 = InterfazPruebaExcepciones()
+gui_64.mostrar()
