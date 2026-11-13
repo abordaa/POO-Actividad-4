@@ -1,0 +1,131 @@
+import html
+import ipywidgets as widgets
+from IPython.display import display
+
+try:  
+    from google.colab import output
+    output.enable_custom_widget_manager()
+except ImportError:
+    pass
+
+
+def encabezado(titulo, subtitulo):
+    return widgets.HTML(
+        "<div style='background:#1a73e8;color:white;padding:10px 14px'>"
+        f"<b style='font-size:16px'>{html.escape(titulo)}</b><br>"
+        f"<span style='font-size:12px'>{html.escape(subtitulo)}</span></div>")
+
+
+def mensajes_html(mensajes):
+    """Lista de (tipo, texto) -> HTML. tipo: 'ok' verde, 'error' rojo, 'info' azul."""
+    colores = {"ok": ("#e6f4ea", "#137333"), "error": ("#fce8e6", "#c5221f"),
+               "info": ("#e8f0fe", "#1967d2")}
+    filas = ""
+    for tipo, texto in mensajes:
+        fondo, letra = colores[tipo]
+        filas += (f"<div style='background:{fondo};color:{letra};padding:4px 8px;margin:2px 0;"
+                  f"font-family:monospace;white-space:pre-wrap'>{html.escape(str(texto))}</div>")
+    return filas
+
+
+def ventana(*hijos):
+    return widgets.VBox(list(hijos), layout=widgets.Layout(
+        border="1px solid #9aa0a6", padding="0 0 10px 0", width="620px"))
+
+
+def fila(*hijos):
+    return widgets.HBox(list(hijos), layout=widgets.Layout(padding="4px 12px"))
+
+
+contenido = """Programación Orientada a Objetos
+Actividad 4 - Ejercicio 6.8: Lectura de archivos
+Línea 3: un archivo se lee como un flujo de bytes.
+Línea 4: el búfer permite leer línea por línea.
+Fin del archivo."""
+with open("prueba.txt", "w", encoding="utf-8") as f:
+    f.write(contenido)
+print("Archivo prueba.txt creado.")
+
+import io
+
+
+class LeerArchivo:
+    """Lee los datos de un archivo de texto (.txt) usando un flujo de bytes.
+    Equivalencias con Java:
+      FileInputStream   -> io.FileIO         (flujo de bytes del archivo)
+      BufferedReader    -> io.BufferedReader (búfer para lectura eficiente)
+      InputStreamReader -> io.TextIOWrapper  (convierte bytes en caracteres Unicode
+                                              y ofrece readline())"""
+
+    def __init__(self, nombre_archivo: str = "prueba.txt"):
+        self.nombre_archivo = nombre_archivo
+
+    def leer(self) -> list:
+        """Devuelve la lista de líneas del archivo. Puede lanzar OSError
+        (equivalente a IOException) si el archivo no se puede leer."""
+        lineas = []
+        archivo = io.FileIO(self.nombre_archivo, "r")          
+        filtro = io.BufferedReader(archivo)                     
+        conversor = io.TextIOWrapper(filtro, encoding="utf-8")  
+        try:
+            linea = conversor.readline()
+            while linea != "":                    
+                lineas.append(linea.rstrip("\n"))
+                linea = conversor.readline()      
+        finally:
+            conversor.close()                     
+        return lineas
+
+    def mostrar_contenido(self):
+        """Muestra en pantalla el contenido del archivo o un mensaje de error."""
+        try:
+            for linea in self.leer():
+                print(linea)
+        except OSError:
+            print("No se pudo leer el archivo.")
+        except UnicodeDecodeError:
+            print("El archivo no es un archivo de texto válido.")
+
+    @staticmethod
+    def main():
+        LeerArchivo("prueba.txt").mostrar_contenido()
+
+LeerArchivo.main()
+
+LeerArchivo("no_existe.txt").mostrar_contenido()
+
+class InterfazLeerArchivo:
+    """Ventana para escribir el nombre de un archivo y ver su contenido."""
+
+    def __init__(self):
+        self.txt_archivo = widgets.Text(value="prueba.txt", description="Archivo:")
+        self.btn_leer = widgets.Button(description="Leer archivo", button_style="primary",
+                                       icon="folder-open")
+        self.txt_contenido = widgets.Textarea(
+            value="", layout=widgets.Layout(width="580px", height="150px"))
+        self.lbl_estado = widgets.HTML()
+        self.btn_leer.on_click(self.leer)
+
+    def leer(self, boton=None):
+        lector = LeerArchivo(self.txt_archivo.value)
+        try:
+            lineas = lector.leer()
+            self.txt_contenido.value = "\n".join(f"{i:>2} | {l}" for i, l in enumerate(lineas, 1))
+            self.lbl_estado.value = mensajes_html(
+                [("ok", f"Se leyeron {len(lineas)} líneas de '{self.txt_archivo.value}'.")])
+        except OSError:
+            self.txt_contenido.value = ""
+            self.lbl_estado.value = mensajes_html([("error", "No se pudo leer el archivo.")])
+        except UnicodeDecodeError:
+            self.txt_contenido.value = ""
+            self.lbl_estado.value = mensajes_html([("error", "El archivo no es de texto.")])
+
+    def mostrar(self):
+        display(ventana(
+            encabezado("Ejercicio 6.8 - Lector de archivos", "Lectura de un archivo de texto con flujo de bytes"),
+            fila(self.txt_archivo, self.btn_leer), fila(self.lbl_estado),
+            fila(self.txt_contenido)))
+
+
+gui_68 = InterfazLeerArchivo()
+gui_68.mostrar()
